@@ -1,38 +1,125 @@
--- Grab what we need from the Lua environment
-local table = table
-local string = string
-local io = io
-local print = print
-local pairs = pairs
-local ipairs = ipairs
-local math = math
-local assert = assert
-local setmetatable = setmetatable
-local rawget = rawget
-local rawset = rawset
-local type = type
-local os = os
-local error = error
-local package = package
-local debug = debug
+require "lousy"
+require "package"
 
--- Grab the luakit environment we need
-local lousy = require("lousy")
-local globals = globals
+local table_join = lousy.util.table.join
 local dedent = lousy.util.string.dedent
-local chrome = require("chrome")
-local history = require("history")
-local markdown = require("markdown")
-local get_modes = get_modes
-local get_mode = get_mode
-local add_binds = add_binds
-local add_cmds = add_cmds
-local webview = webview
-local capi = {
-    luakit = luakit
-}
+local markdown = require "markdown"
 
-module("introspector")
+-- Module table
+local M = {}
+
+-- Cache collated data
+local by_mode = {}
+local by_bind = {}
+local by_module = {}
+
+-- Cross references
+local mode_binds = {}
+
+local module_binds = {}
+local module_modes = {}
+
+-- External file load cache
+local source_cache = {}
+
+-- Return string representation of the bind activator
+local function bind_tostring(b)
+    local t, m = b.type, b.mods
+    local mods = m and #m > 0 and table.concat(m, "-") .. "-"
+
+    if t == "key" then
+        if mods or string.wlen(b.key) > 1 then
+            return "<".. (mods and mods or "") .. b.key .. ">"
+        end
+        return b.key
+
+    elseif t == "buffer" then
+        local pat = b.pattern
+        if string.match(pat, "^^.+$$") then
+            return string.sub(pat, 2, -2)
+        end
+        return pat
+
+    elseif t == "button" then
+        return "<" .. (mods and mods or "") .. "Mouse" .. b.button .. ">"
+
+    elseif t == "any" then
+        return "any"
+
+    elseif t == "command" then
+        local cmds = {}
+        for i, cmd in ipairs(b.cmds) do
+            cmds[i] = ":"..cmd
+        end
+        return table.concat(cmds, ", ")
+    end
+end
+
+-- Get the source definition of the given function
+local function function_tostring(func, info)
+    local src = info.short_src
+    local lines = source_cache[src]
+    if not lines then
+        local file = lousy.load(src)
+        lines = {}
+        local i = 1
+        string.gsub(file, "([^\n]*)\n?", function (line)
+            lines[i] = line
+            i = i + 1
+        end)
+        source_cache[src] = lines
+    end
+
+    return dedent(table.concat(lines, "\n", info.linedefined,
+        info.lastlinedefined), true)
+end
+
+local function examine_bind(b)
+    if by_bind[b] then return by_bind[b] end -- memoization
+
+    local info = debug.getinfo(b.func, "S")
+
+    local ret = {
+        type = b.type,
+        repr = bind_tostring(b),
+        desc = b.desc and markdown(dedent(b.desc)) or nil,
+        source = info.short_src,
+        line = info.linedefined,
+        func = function_tostring(b.func, info),
+    }
+
+    by_bind[b] = ret
+    return ret
+end
+
+local function examine_mode(name, mode)
+    if by_mode[name] then return by_mode[name] end -- memoization
+
+    local binds
+    if mode.binds then
+        binds = {}
+        for i, b in ipairs(mode.binds) do
+            binds[i] = examine_bind(b)
+        end
+    end
+
+    local ret = {
+        name = name,
+        binds = binds,
+        source = string.match(mode.traceback, "\t([^:]+)"),
+        desc = mode.desc and markdown(dedent(mode.desc)) or nil,
+        order = mode.order,
+    }
+
+    by_mode[name] = ret
+    return ret
+end
+
+local function collate()
+    for name, mode in pairs(get_modes()) do
+        by_mode[name] = examine_mode(name, mode)
+    end
+end
 
 local html = [==[
 <!doctype html>
@@ -71,6 +158,7 @@ local html = [==[
             margin-bottom: 1.0em;
             line-height: 1.4em;
             border-bottom: 1px solid #888;
+            font-family: monospace, sans-serif;
         }
 
         h1, h2, h3, h4 {
@@ -96,10 +184,6 @@ local html = [==[
             margin-bottom: 1em;
         }
 
-        .mode .mode-name {
-            font-family: monospace, sans-serif;
-        }
-
         .mode .binds {
             clear: both;
             display: block;
@@ -116,27 +200,27 @@ local html = [==[
             -webkit-border-radius: 0.5em;
         }
 
-        .bind .link-box {
+        .bind .refs {
             float: right;
             font-family: monospace, sans-serif;
             text-decoration: none;
         }
 
-        .bind .link-box a {
+        .bind .refs a {
             color: #11c;
             text-decoration: none;
         }
 
-        .bind .link-box a:hover {
+        .bind .refs a:hover {
             color: #11c;
             text-decoration: underline;
         }
 
-        .bind .func-source {
+        .bind .func {
             display: none;
         }
 
-        .bind .key {
+        .bind .repr {
             font-family: monospace, sans-serif;
             float: left;
             color: #2E4483;
@@ -188,7 +272,7 @@ local html = [==[
             border: none;
         }
 
-        .bind_type_any .key {
+        .bind_type_any .repr {
             color: #888;
             float: left;
         }
@@ -208,21 +292,19 @@ local html = [==[
             <section class="mode">
                 <h3 class="mode-name"></h3>
                 <p class="mode-desc"></p>
-                <pre style="display: none;" class="mode-traceback"></pre>
-                <ol class="binds">
-                </ol>
+                <ol class="binds"></ol>
             </section>
         </div>
         <div id="mode-bind-skelly">
             <ol class="bind">
-                <div class="link-box">
-                    <a href class="filename"></a>
-                    <a href class="linedefined"></a>
+                <div class="refs">
+                    <a href class="file"></a>
+                    <a href class="line"></a>
                 </div>
                 <hr class="clear" />
-                <div class="key"></div>
+                <div class="repr"></div>
                 <div class="box desc"></div>
-                <div class="box func-source">
+                <div class="box func">
                     <h4>Function source:</h4>
                     <pre><code></code></pre>
                 </div>
@@ -234,55 +316,58 @@ local html = [==[
 
 main_js = [=[
 $(document).ready(function () {
-    var $body = $(document.body);
 
-    var mode_section_html = $("#mode-section-skelly").html(),
+    var $body = $(document.body),
+        mode_section_html = $("#mode-section-skelly").html(),
         mode_bind_html = $("#mode-bind-skelly").html();
 
     // Remove all templates
     $("#templates").remove();
 
-    // Get all modes & sub-data
-    var modes = help_get_modes();
-    for (var i = 0; i < modes.length; i++) {
-        var mode = modes[i];
+    function make_bind_html(b) {
+        var $bind = $(mode_bind_html);
+        $bind.addClass("bind_type_" + b.type);
+        $bind.find(".repr").text(b.repr);
+        $bind.find(".func code").text(b.func);
+        $bind.find(".refs .file").text(b.source);
+        $bind.find(".refs .line").text("#" + b.line)
+            .attr("file", b.source).attr("line", b.line);
+
+        if (b.desc)
+            $bind.find(".desc").html(b.desc);
+        else
+            $bind.find(".clear").hide();
+
+        return $bind;
+    }
+
+    function make_mode_html(m) {
         var $mode = $(mode_section_html);
-        $mode.attr("id", "mode-" + mode.name);
-        $mode.find("h3.mode-name").text(mode.name + " mode");
-        $mode.find("p.mode-desc").html(mode.desc);
-        $mode.find("pre.mode-traceback").text(mode.traceback);
+        $mode.attr("id", "mode-" + m.name);
+        $mode.find("h3.mode-name").text(m.name + " mode");
+        $mode.find("p.mode-desc").html(m.desc);
 
-        var $binds = $mode.find(".binds");
-
-        var binds = mode.binds;
-        for (var j = 0; j < binds.length; j++) {
-            var b = binds[j];
-            var $bind = $(mode_bind_html);
-            $bind.addClass("bind_type_" + b.type);
-            $bind.find(".key").text(b.key);
-            $bind.find(".func-source code").text(b.func);
-            $bind.find(".filename").text(b.filename);
-
-            var $l = $bind.find(".linedefined");
-            $l.text("#" + b.linedefined);
-            $l.attr("filename", b.filename);
-            $l.attr("line", b.linedefined);
-
-            if (b.desc)
-                $bind.find(".desc").html(b.desc);
-            else
-                $bind.find(".clear").hide();
-
-            $binds.append($bind);
+        var binds = m.binds;
+        if (binds && binds.length) {
+            var $binds = $mode.find(".binds");
+            for (var j = 0; j < binds.length; j++)
+                $binds.append(make_bind_html(binds[j]));
         }
 
-        $body.append($mode);
+        return $mode;
+    }
+
+    // Get all modes & sub-data
+    var names = help_mode_names();
+    for (var i = 0; i < names.length; i++) {
+        var mode = help_get_mode(names[i]);
+        $body.append(make_mode_html(mode));
     }
 
     $body.on("click", ".bind .linedefined", function (event) {
         event.preventDefault();
         var $e = $(this);
-        open_editor($e.attr("filename"), $e.attr("line"));
+        open_editor($e.attr("file"), $e.attr("line"));
         return false;
     })
 
@@ -291,7 +376,7 @@ $(document).ready(function () {
     })
 
     $body.on("click", ".bind", function (e) {
-        var $src = $(this).find(".func-source");
+        var $src = $(this).find(".func");
         if ($src.is(":visible"))
             $src.slideUp();
         else
@@ -300,88 +385,18 @@ $(document).ready(function () {
 });
 ]=]
 
-local function bind_tostring(b)
-    local join = lousy.util.table.join
-    local t = b.type
-    local m = b.mods and #b.mods > 0 and table.concat(b.mods, "-")
-
-    if t == "key" then
-        if m or string.wlen(b.key) > 1 then
-            return "<".. (m and (m.."-") or "") .. b.key .. ">"
-        else
-            return b.key
-        end
-    elseif t == "buffer" then
-        local p = b.pattern
-        if string.sub(p,1,1) .. string.sub(p, -1, -1) == "^$" then
-            return string.sub(p, 2, -2)
-        end
-        return b.pattern
-    elseif t == "button" then
-        return "<" .. (m and (m.."-") or "") .. "Mouse" .. b.button .. ">"
-    elseif t == "any" then
-        return "any"
-    elseif t == "command" then
-        local cmds = {}
-        for i, cmd in ipairs(b.cmds) do
-            cmds[i] = ":"..cmd
-        end
-        return table.concat(cmds, ", ")
-    end
-end
-
-local source_lines = {}
-local function function_source_range(func, info)
-    local lines = source_lines[info.short_src]
-
-    if not lines then
-        local source = lousy.load(info.short_src)
-        lines = {}
-        string.gsub(source, "([^\n]*)\n", function (line)
-            table.insert(lines, line)
-        end)
-        source_lines[info.short_src] = lines
-    end
-
-    return dedent(table.concat(lines, "\n", info.linedefined,
-        info.lastlinedefined), true)
-end
-
 export_funcs = {
-    help_get_modes = function ()
-        local ret = {}
-        local modes = lousy.util.table.values(get_modes())
+    help_mode_names = function ()
+        -- Sort modes by their order property (which is creation order)
+        local modes = lousy.util.table.values(by_mode)
         table.sort(modes, function (a, b) return a.order < b.order end)
+        local names = {}
+        for i, m in ipairs(modes) do names[i] = m.name end
+        return names
+    end,
 
-        for _, mode in pairs(modes) do
-            local binds = {}
-
-            if mode.binds then
-                for i, b in pairs(mode.binds) do
-                    local info = debug.getinfo(b.func, "uS")
-
-                    binds[i] = {
-                        type = b.type,
-                        key = bind_tostring(b),
-                        desc = b.desc and markdown(dedent(b.desc)) or nil,
-                        filename = info.short_src,
-                        linedefined = info.linedefined,
-                        lastlinedefined = info.lastlinedefined,
-                        func = function_source_range(b.func, info),
-                    }
-                end
-            end
-
-            table.insert(ret, {
-                name = mode.name,
-                desc = mode.desc and markdown(dedent(mode.desc)) or nil,
-                binds = binds,
-                traceback = mode.traceback
-            })
-        end
-        -- Clear source file cache
-        source_lines = {}
-        return ret
+    help_get_mode = function (name)
+        return assert(by_mode[name], "invalid mode name")
     end,
 
     open_editor = function (file, line)
@@ -414,6 +429,8 @@ chrome.add("help", function (view, meta)
         local _, err = view:eval_js(jquery, { no_return = true })
         assert(not err, err)
 
+        collate()
+
         -- Load main luakit://download/ JavaScript
         local _, err = view:eval_js(main_js, { no_return = true })
         assert(not err, err)
@@ -432,3 +449,5 @@ add_cmds({
 history.add_signal("add", function (uri)
     if string.match(uri, "^luakit://help/") then return false end
 end)
+
+return M
