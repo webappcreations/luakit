@@ -11,7 +11,7 @@ local capi = {
     luakit = luakit
 }
 
-module("lousy.load")
+local M = {}
 
 -- Keep loaded resources in memory
 local data = {}
@@ -34,7 +34,7 @@ local function load_resource(path, memorize)
     end
 end
 
-local function search_load(path, memorize)
+function M.search_load(path, memorize)
     assert(type(path) == "string", "invalid path")
     memorize = not not memorise
 
@@ -51,4 +51,4 @@ local function search_load(path, memorize)
         "unable to load resource: " .. path)
 end
 
-setmetatable(_M, { __call = function (_, ...) return search_load(...) end })
+return setmetatable(M, { __call = function (_, ...) return search_load(...) end })

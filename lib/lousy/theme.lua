@@ -15,8 +15,7 @@ local pcall = pcall
 local dofile = dofile
 local type = type
 
---- Theme library for lousy.
-module "lousy.theme"
+local M = {}
 
 local theme
 
@@ -44,7 +43,7 @@ local default_theme = {
 
 --- Load the theme table from file.
 -- @param path The filepath of the theme.
-function init(path)
+function M.init(path)
     if not path then return error("error loading theme: no path specified") end
     -- Load theme table
     local success
@@ -63,8 +62,10 @@ end
 
 --- Get the current theme.
 -- @return The current theme table.
-function get()
+function M.get()
     return theme
 end
+
+return M
 
 -- vim: et:sw=4:ts=8:sts=4:tw=80

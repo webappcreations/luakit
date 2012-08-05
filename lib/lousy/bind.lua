@@ -7,28 +7,26 @@
 local assert = assert
 local ipairs = ipairs
 local pairs = pairs
-local setmetatable = setmetatable
 local string = string
 local table = table
 local type = type
 local unpack = unpack
 local util = require("lousy.util")
 local join = util.table.join
-local print = print
 
 -- Key, buffer and command binding functions.
-module("lousy.bind")
+local M = {}
 
 -- Modifiers to ignore
-ignore_modifiers = { "Mod2", "Mod3", "Mod5", "Lock" }
+local ignore_modifiers = { "Mod2", "Mod3", "Mod5", "Lock" }
 
 -- A table that contains mappings for key names.
-map = {
+local map = {
     ISO_Left_Tab = "Tab",
 }
 
 -- Return cloned, sorted & filtered modifier mask table.
-function filter_mods(mods, remove_shift)
+local function filter_mods(mods, remove_shift)
     -- Clone & sort new modifiers table
     mods = util.table.clone(mods)
     table.sort(mods)
@@ -41,7 +39,7 @@ function filter_mods(mods, remove_shift)
 end
 
 -- Create new key binding.
-function key(mods, key, desc, func, opts)
+function M.key(mods, key, desc, func, opts)
     -- Detect optional description & adjust argument positions
     if type(desc) == "function" then
         desc, func, opts = nil, desc, func
@@ -63,7 +61,7 @@ function key(mods, key, desc, func, opts)
 end
 
 -- Create new button binding.
-function but(mods, button, desc, func, opts)
+function M.but(mods, button, desc, func, opts)
     -- Detect optional description & adjust argument positions
     if type(desc) == "function" then
         desc, func, opts = nil, desc, func
@@ -85,7 +83,7 @@ function but(mods, button, desc, func, opts)
 end
 
 -- Create new buffer binding.
-function buf(pattern, desc, func, opts)
+function M.buf(pattern, desc, func, opts)
     -- Detect optional description & adjust argument positions
     if type(desc) == "function" then
         desc, func, opts = nil, desc, func
@@ -105,7 +103,7 @@ function buf(pattern, desc, func, opts)
 end
 
 -- Create new command binding.
-function cmd(cmds, desc, func, opts)
+function M.cmd(cmds, desc, func, opts)
     -- Detect optional description & adjust argument positions
     if type(desc) == "function" then
         desc, func, opts = nil, desc, func
@@ -136,7 +134,7 @@ function cmd(cmds, desc, func, opts)
 end
 
 -- Create a binding which is always called.
-function any(desc, func, opts)
+function M.any(desc, func, opts)
     -- Detect optional description & adjust argument positions
     if type(desc) == "function" then
         desc, func, opts = nil, desc, func
@@ -154,7 +152,7 @@ function any(desc, func, opts)
 end
 
 -- Try and match an any binding.
-function match_any(object, binds, args)
+local function match_any(object, binds, args)
     for _, b in ipairs(binds) do
         if b.type == "any" then
             if b.func(object, join(b.opts, args)) ~= false then
@@ -167,7 +165,7 @@ end
 
 -- Try and match a key binding in a given table of bindings and call that
 -- bindings callback function.
-function match_key(object, binds, mods, key, args)
+local function match_key(object, binds, mods, key, args)
     for _, b in ipairs(binds) do
         if b.type == "key" and b.key == key and util.table.isclone(b.mods, mods) then
             if b.func(object, join(b.opts, args)) ~= false then
@@ -180,7 +178,7 @@ end
 
 -- Try and match a button binding in a given table of bindings and call that
 -- bindings callback function.
-function match_but(object, binds, mods, button, args)
+local function match_but(object, binds, mods, button, args)
     for _, b in ipairs(binds) do
         if b.type == "button" and b.button == button and util.table.isclone(b.mods, mods) then
             if b.func(object, join(b.opts, args)) ~= false then
@@ -199,7 +197,7 @@ end
 -- @param args The bind options/state/metadata table which is applied over the
 -- opts table given when the bind was created.
 -- @return True if a binding was matched and called.
-function match_buf(object, binds, buffer, args)
+local function match_buf(object, binds, buffer, args)
     assert(buffer and string.match(buffer, "%S"), "invalid buffer")
 
     for _, b in ipairs(binds) do
@@ -224,7 +222,7 @@ end
 -- @param args The bind options/state/metadata table which is applied over the
 -- opts table given when the bind was created.
 -- @return True if either type of binding was matched and called.
-function match_cmd(object, binds, buffer, args)
+function M.match_cmd(object, binds, buffer, args)
     assert(buffer and string.match(buffer, "%S"), "invalid buffer")
 
     -- The command is the first word in the buffer string
@@ -272,9 +270,9 @@ end
 -- the buffer.
 -- @return The new buffer truncated to 10 characters (if you need more buffer
 -- then use the input bar for whatever you are doing).
-function hit(object, binds, mods, key, args)
+function M.hit(object, binds, mods, key, args)
     -- Convert keys using map
-    key = map[key] or key
+    key = rawget(map, key) or key
 
     -- Filter modifers table
     mods = filter_mods(mods, type(key) == "string" and #key == 1)
@@ -328,5 +326,7 @@ function hit(object, binds, mods, key, args)
     end
     return false
 end
+
+return M
 
 -- vim: et:sw=4:ts=8:sts=4:tw=80

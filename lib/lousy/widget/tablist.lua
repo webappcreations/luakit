@@ -5,18 +5,17 @@
 
 -- Grab environment we need
 local assert = assert
-local setmetatable = setmetatable
 local table = table
 local type = type
 local signal = require "lousy.signal"
 local get_theme = require("lousy.theme").get
 local capi = { widget = widget }
 
-module "lousy.widget.tablist"
+local M = {}
 
 local data = setmetatable({}, { __mode = "k" })
 
-function update(tlist, tabs, current)
+local function update(tlist, tabs, current)
     -- Check function arguments
     assert(data[tlist] and type(tlist.widget) == "widget", "invalid tablist widget")
     assert(type(tabs) == "table", "invalid tabs table")
@@ -78,7 +77,7 @@ function update(tlist, tabs, current)
     return tlist
 end
 
-function destroy(tlist)
+local function destroy(tlist)
     -- Destroy all tablabels
     update(tlist, {}, 0)
     -- Destroy tablist container widget
@@ -87,7 +86,7 @@ function destroy(tlist)
     data[tlist] = nil
 end
 
-function new()
+function M.new()
     -- Create tablist widget table
     local tlist = {
         widget  = capi.widget{type = "hbox"},
@@ -104,5 +103,5 @@ function new()
     return tlist
 end
 
-setmetatable(_M, { __call = function(_, ...) return new(...) end })
+return setmetatable(M, { __call = function(_, ...) return M.new(...) end })
 -- vim: et:sw=4:ts=8:sts=4:tw=80

@@ -1,9 +1,9 @@
---------------------------------------------------------------
--- Mimic the luakit signal api functions for tables         --
--- @author Fabian Streitel &lt;karottenreibe@gmail.com&gt;  --
--- @author Mason Larobina  &lt;mason.larobina@gmail.com&gt; --
--- @copyright 2010 Fabian Streitel, Mason Larobina          --
---------------------------------------------------------------
+--------------------------------------------------------
+-- Mimic the luakit signal api functions for tables   --
+-- @author Fabian Streitel <karottenreibe@gmail.com>  --
+-- @author Mason Larobina  <mason.larobina@gmail.com> --
+-- @copyright 2010 Fabian Streitel, Mason Larobina    --
+--------------------------------------------------------
 
 -- Grab environment we need
 local assert = assert
@@ -17,76 +17,87 @@ local type = type
 local unpack = unpack
 local verbose = luakit.verbose
 
---- Provides a signal API similar to GTK's signals.
-module("lousy.signal")
+local rawget, rawset = rawget, rawset
+local match = string.match
+
+local M = {}
 
 -- Private signal data for objects
 local data = setmetatable({}, { __mode = "k" })
 
-local methods = {
-    "add_signal",
-    "emit_signal",
-    "remove_signal",
-    "remove_signals",
-}
-
-local function get_data(object)
-    local d = data[object]
-    assert(d, "object isn't setup for signals")
-    return d
+local debug_printf = function (format, ...)
+    io.stderr:write(string.format("D: lousy.signal: " .. format, ...))
 end
 
-function add_signal(object, signame, func)
-    local signals = get_data(object).signals
+local function add_signal(object, signame, func)
+    local d = rawget(data, object)
+    if not d then error("object not setup for signals") end
+    local signals = rawget(d, "signals")
 
     -- Check signal name
-    assert(type(signame) == "string", "invalid signame type: " .. type(signame))
-    assert(string.match(signame, "^[%w_%-:]+$"), "invalid chars in signame: " .. signame)
+    if type(signame) ~= "string" or not match(signame, "^[%w_%-:]+$") then
+        print(object, signame, func)
+        error("invalid signame")
+    end
 
-    -- Check handler function
-    assert(type(func) == "function", "invalid handler function")
+    if type(func) ~= "function" then error("invalid sigfunc") end
 
-    -- Add to signals table
-    if not signals[signame] then
-        signals[signame] = { func, }
+    if verbose then
+        debug_printf("add_signal: %q on %s", signame, tostring(object))
+    end
+
+    local sigfuncs = rawget(signals, signame)
+    if sigfuncs then
+        table.insert(sigfuncs, func)
     else
-        table.insert(signals[signame], func)
+        rawset(signals, signame, { func, })
     end
 end
 
-function emit_signal(object, signame, ...)
-    local d = get_data(object)
-    local sigfuncs = d.signals[signame] or {}
+local function emit_signal(object, signame, ...)
+    local d = rawget(data, object)
+    if not d then error("object not setup for signals") end
+
+    local sigfuncs = rawget(rawget(d, "signals"), signame)
+    if not sigfuncs then return end
 
     if verbose then
-        io.stderr:write(string.format("D: lousy.signal: emit_signal: "
-            .. "%q on %s\n", signame, tostring(object)))
+        debug_printf("emit_signal: %q on %s", signame, tostring(object))
     end
 
+    local module = rawget(d, "module")
     for _, sigfunc in ipairs(sigfuncs) do
         local ret
-        if d.module then
+        if module then
             ret = { sigfunc(...) }
         else
             ret = { sigfunc(object, ...) }
         end
-        if ret[1] ~= nil then
+        if rawget(ret, 1) ~= nil then
             return unpack(ret)
         end
     end
 end
 
 -- Remove a signame & function pair.
-function remove_signal(object, signame, func)
-    local signals = get_data(object).signals
-    local sigfuncs = signals[signame] or {}
+local function remove_signal(object, signame, func)
+    local d = rawget(data, object)
+    if not d then error("object not setup for signals") end
+
+    local signals = rawget(d, "signals")
+    local sigfuncs = rawget(signals, signame)
+    if not sigfuncs then return end
+
+    if verbose then
+        debug_printf("remove_signal: %q on %s", signame, tostring(object))
+    end
 
     for i, sigfunc in ipairs(sigfuncs) do
         if sigfunc == func then
             table.remove(sigfuncs, i)
             -- Remove empty sigfuncs table
             if #sigfuncs == 0 then
-                signals[signame] = nil
+                rawset(signals, signame, nil)
             end
             return func
         end
@@ -94,27 +105,48 @@ function remove_signal(object, signame, func)
 end
 
 -- Remove all signal handlers with the given signame.
-function remove_signals(object, signame)
-    local signals = get_data(object).signals
-    signals[signame] = nil
-end
+local function remove_signals(object, signame)
+    local d = rawget(data, object)
+    if not d then error("object not setup for signals") end
 
-function setup(object, module)
-    assert(not data[object], "given object already setup for signals")
-
-    data[object] = { signals = {}, module = module }
-
-    for _, fn in ipairs(methods) do
-        assert(not object[fn], "signal object method conflict: " .. fn)
-        if module then
-            local func = _M[fn]
-            object[fn] = function (...) return func(object, ...) end
-        else
-            object[fn] = _M[fn]
-        end
+    if verbose then
+        debug_printf("remove_signals: %q on %s", signame, tostring(object))
     end
 
-    return object
+    rawset(rawget(d, "signals"), signame, nil)
 end
+
+local methods = {
+    add_signal = add_signal,
+    emit_signal = emit_signal,
+    remove_signal = remove_signal,
+    remove_signals = remove_signals,
+}
+
+function M.setup(object, module)
+    if type(object) ~= "table" then
+        error("object not suitable for signal setup")
+    end
+
+    if rawget(data, object) then
+        error("object already setup for signals")
+    end
+
+    rawset(data, object, { signals = {}, module = module })
+
+    for name, func in pairs(methods) do
+        if rawget(object, name) ~= nil then
+            error("object method name conflict for: " .. name)
+        end
+
+        if module then
+            rawset(object, name, function (...) return func(object, ...) end)
+        else
+            rawset(object, name, func)
+        end
+    end
+end
+
+return M
 
 -- vim: et:sw=4:ts=8:sts=4:tw=80
