@@ -57,10 +57,10 @@ add_binds("all", {
 
     -- Mouse bindings
     but({}, 8, "Go back.",
-        function (w) w:back() end),
+        function (w) w.view:go_back(1) end),
 
     but({}, 9, "Go forward.",
-        function (w) w:forward() end),
+        function (w) w.view:go_forward(1) end),
 
     -- Open link in new tab or navigate to selection
     but({}, 2, [[Open link under mouse cursor in new tab or navigate to the
@@ -326,22 +326,22 @@ add_binds("normal", {
 
     -- History
     key({}, "H", "Go back in the browser history `[count=1]` items.",
-        function (w, m) w:back(m.count) end),
+        function (w, m) w.view:go_back(m.count or 1) end),
 
     key({}, "L", "Go forward in the browser history `[count=1]` times.",
-        function (w, m) w:forward(m.count) end),
+        function (w, m) w.view:go_forward(m.count or 1) end),
 
     key({}, "XF86Back", "Go back in the browser history.",
-        function (w, m) w:back(m.count) end),
+        function (w, m) w.view:go_back(m.count or 1) end),
 
     key({}, "XF86Forward", "Go forward in the browser history.",
-        function (w, m) w:forward(m.count) end),
+        function (w, m) w.view:go_forward(m.count or 1) end),
 
     key({"Control"}, "o", "Go back in the browser history.",
-        function (w, m) w:back(m.count) end),
+        function (w, m) w.view:go_back(m.count or 1) end),
 
     key({"Control"}, "i", "Go forward in the browser history.",
-        function (w, m) w:forward(m.count) end),
+        function (w, m) w.view:go_forward(m.count or 1) end),
 
     -- Tab
     key({"Control"}, "Page_Up", "Go to previous tab.",
@@ -400,10 +400,10 @@ add_binds("normal", {
         function (w) w:new_tab(w.view.history or "") end),
 
     key({}, "r", "Reload current tab.",
-        function (w) w:reload() end),
+        function (w) w.view:reload() end),
 
     key({}, "R", "Reload current tab (skipping cache).",
-        function (w) w:reload(true) end),
+        function (w) w.view:reload(true) end),
 
     key({"Control"}, "c", "Stop loading the current tab.",
         function (w) w.view:stop() end),
@@ -504,8 +504,8 @@ add_cmds({
     cmd("stop", "Stop loading.",
         function (w) w.view:stop() end),
 
-    cmd("reload", "Reload page",
-        function (w) w:reload() end),
+    cmd("reload", "Reload page.",
+        function (w, _, o) w.view:reload(o.bang) end),
 
     cmd("restart", "Restart browser (reload config files).",
         function (w) w:restart() end),
@@ -517,10 +517,10 @@ add_cmds({
         function (w) w:clear_search() end),
 
     cmd("back", "Go back in the browser history `[count=1]` items.",
-        function (w, a) w:back(tonumber(a) or 1) end),
+        function (w, a) w.view:go_back(tonumber(a) or 1) end),
 
     cmd("f[orward]", "Go forward in the browser history `[count=1]` items.",
-        function (w, a) w:forward(tonumber(a) or 1) end),
+        function (w, a) w.view:go_forward(tonumber(a) or 1) end),
 
     cmd("inc[rease]", "Increment last number in URL.",
         function (w, a) w:navigate(w:inc_uri(tonumber(a) or 1)) end),

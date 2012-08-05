@@ -238,15 +238,6 @@ webview.init_funcs = {
 -- as the first argument. All methods must take `view` & `w` as the first two
 -- arguments.
 webview.methods = {
-    -- Reload with or without ignoring cache
-    reload = function (view, w, bypass_cache)
-        if bypass_cache then
-            view:reload_bypass_cache()
-        else
-            view:reload()
-        end
-    end,
-
     -- Toggle source view
     toggle_source = function (view, w, show)
         if show == nil then
@@ -273,15 +264,6 @@ webview.methods = {
     zoom_set = function (view, w, level, full_zoom)
         view.full_content_zoom = not not full_zoom
         view.zoom_level = level or 1.0
-    end,
-
-    -- History traversing functions
-    back = function (view, w, n)
-        view:go_back(n or 1)
-    end,
-
-    forward = function (view, w, n)
-        view:go_forward(n or 1)
     end,
 }
 
