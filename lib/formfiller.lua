@@ -16,7 +16,9 @@ local capi = {
     luakit = luakit
 }
 
-local new_mode, add_binds = new_mode, add_binds
+local modes = require "modes"
+
+local add_binds = add_binds
 local menu_binds = menu_binds
 
 local term       = globals.term   or "xterm"
@@ -486,7 +488,7 @@ function load(w, fast)
 end
 
 -- Add formfiller mode
-new_mode("formfiller", {
+modes.new("formfiller", {
     enter = function (w)
         local rows = {{ "Profile", title = true }}
         for _, m in ipairs(w.formfiller_state.menu_cache) do

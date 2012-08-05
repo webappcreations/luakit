@@ -4,8 +4,13 @@
 -- © 2010 Mason Larobina <mason.larobina@gmail.com> --
 ------------------------------------------------------
 
+local lousy = require "lousy"
+local key, cmd = lousy.bind.key, lousy.bind.cmd
+
+local modes = require "modes"
+
 -- Undo a closed tab (with complete tab history)
-window.methods.undo_close_tab = function (w, index)
+function window.methods.undo_close_tab(w, index)
     -- Convert negative indexes
     if index and index < 0 then
         index = #(w.closed_tabs) + index + 1
@@ -22,7 +27,6 @@ window.methods.undo_close_tab = function (w, index)
     end
 end
 
-local key = lousy.bind.key
 add_binds("normal", {
     key({}, "u", "Undo closed tab (restoring tab history).",
         function (w, m) w:undo_close_tab(-m.count) end, {count=1}),
@@ -30,7 +34,7 @@ add_binds("normal", {
 
 -- View closed tabs in a list
 local escape = lousy.util.escape
-new_mode("undolist", {
+modes.new("undolist", {
     enter = function (w)
         local rows = {{ "Title", " URI", title = true }}
         for uid, tab in ipairs(w.closed_tabs) do
@@ -111,7 +115,6 @@ add_binds("undolist", lousy.util.table.join({
 }, menu_binds))
 
 -- Add `:undolist` command to view all closed tabs in an interactive menu
-local cmd = lousy.bind.cmd
 add_cmds({
     cmd("undolist", "Undo closed tabs menu.", function (w, a)
         if #(w.closed_tabs) == 0 then

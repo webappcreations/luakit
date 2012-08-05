@@ -4,11 +4,14 @@
 -- © 2010 Mason Larobina  <mason.larobina@gmail.com>  --
 --------------------------------------------------------
 
-local util = require("lousy.util")
-local join = util.table.join
+local modes = require "modes"
+
+local lousy = require "lousy"
+local join = lousy.util.table.join
+
 
 -- View history items in an interactive menu.
-new_mode("tabhistory", {
+modes.new("tabhistory", {
     leave = function (w)
         w.menu:hide()
     end,

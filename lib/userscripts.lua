@@ -15,16 +15,13 @@ local string = string
 local table = table
 local warn = warn
 local webview = webview
-local bind = require("lousy.bind")
-local util = require("lousy.util")
+local modes = require "modes"
+local lousy = require "lousy"
+
 local lfs = require("lfs")
 local add_binds, add_cmds = add_binds, add_cmds
-local new_mode, menu_binds = new_mode, menu_binds
+local  menu_binds =  menu_binds
 local capi = { luakit = luakit }
-
---- Evaluates and manages userscripts.
--- JavaScript userscripts must end in <code>.user.js</code>
-module("userscripts")
 
 -- Pure JavaScript implementation of greasemonkey methods commonly used
 -- in chome/firefox userscripts.
@@ -177,14 +174,17 @@ local function parse_pattern(pat)
 end
 
 local function parse_header(header, file)
+    local split = lousy.util.string.split
+    local strip = lousy.util.string.strip
+
     local ret = { file = file, include = {}, exclude = {} }
-    for i, line in ipairs(util.string.split(header, "\n")) do
+    for i, line in ipairs(split(header, "\n")) do
         local singles = { name = true, description = true,
             version = true, homepage = true }
         -- Parse `// @key value` lines in header.
         local key, val = string.match(line, "^// @([%w%-]+)%s+(.+)$")
         if key then
-            val = util.string.strip(val or "")
+            val = strip(val or "")
             if singles[key] then
                 -- Only grab the first of its kind
                 if not ret[key] then ret[key] = val end
@@ -242,7 +242,7 @@ end
 -- Saves an userscript
 function save(file, js)
     if not os.exists(dir) then
-        util.mkdir(dir)
+        lousy.util.mkdir(dir)
     end
     local f = io.open(dir .. "/" .. file, "w")
     f:write(js)
@@ -272,7 +272,7 @@ webview.init_funcs.userscripts = function (view, w)
 end
 
 -- Add userscript commands
-local cmd = bind.cmd
+local cmd = lousy.bind.cmd
 add_cmds({
     -- Saves the content of the open view as an userscript
     cmd({"userscriptinstall", "usi", "usinstall"}, "install userscript", function (w, a)
@@ -280,7 +280,7 @@ add_cmds({
         local file = string.match(view.uri, "/([^/]+%.user%.js)$")
         if (not file) then return w:error("URL is not a *.user.js file") end
         if view:loading() then w:error("Wait for script to finish loading first.") end
-        local js = util.unescape(view:eval_js("document.body.getElementsByTagName('pre')[0].innerHTML"))
+        local js = lousy.util.unescape(view:eval_js("document.body.getElementsByTagName('pre')[0].innerHTML"))
         local header = string.match(js, "//%s*==UserScript==%s*\n(.*)\n//%s*==/UserScript==")
         if not header then return w:error("Could not find userscript header") end
         save(file, js)
@@ -292,7 +292,7 @@ add_cmds({
 })
 
 -- Add mode to display all userscripts in menu
-new_mode("uscriptlist", {
+modes.new("uscriptlist", {
     enter = function (w)
         local rows = {{ "Userscripts", "Description", title = true }}
         for file, script in pairs(scripts) do
@@ -314,8 +314,8 @@ new_mode("uscriptlist", {
     end,
 })
 
-local key = bind.key
-add_binds("uscriptlist", util.table.join({
+local key = lousy.bind.key
+add_binds("uscriptlist", lousy.util.table.join({
     -- Delete userscript
     key({}, "d", function (w)
         local row = w.menu:get()
