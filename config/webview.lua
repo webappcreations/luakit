@@ -158,7 +158,7 @@ webview.init_funcs = {
         view:add_signal("load-status", function (v, status)
             if status ~= "committed" or v.uri == "about:blank" then return end
             -- Get domain
-            local domain = lousy.uri.parse(v.uri).host
+            local domain = soup.parse_uri(v.uri).host
             -- Strip leading www.
             domain = string.match(domain or "", "^www%.(.+)") or domain or "all"
             -- Build list of domain props tables to join & load.
