@@ -39,12 +39,12 @@ end
 -- Adds the default menu widget bindings to a mode
 menu_binds = {
     -- Navigate items
-    key({},          "j",       function (w) w.menu:move_down() end),
-    key({},          "k",       function (w) w.menu:move_up()   end),
-    key({},          "Down",    function (w) w.menu:move_down() end),
-    key({},          "Up",      function (w) w.menu:move_up()   end),
-    key({},          "Tab",     function (w) w.menu:move_down() end),
-    key({"Shift"},   "Tab",     function (w) w.menu:move_up()   end),
+    key({}, "j",    "Move down menu.",  function (w) w.menu:move_down() end),
+    key({}, "k",    "Move up menu.",    function (w) w.menu:move_up()   end),
+    key({}, "Down", "Move down menu.",  function (w) w.menu:move_down() end),
+    key({}, "Up",   "Move up menu.",    function (w) w.menu:move_up()   end),
+    key({}, "Tab",  "Move down menu.",  function (w) w.menu:move_down() end),
+    key({"Shift"}, "Tab", "Move up menu.",function (w) w.menu:move_up() end),
 }
 
 -- Add binds to special mode "all" which adds its binds to all modes.
