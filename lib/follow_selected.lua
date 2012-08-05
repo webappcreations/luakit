@@ -6,6 +6,8 @@
 -- © 2009 israellevin                                                       --
 ------------------------------------------------------------------------------
 
+local lousy = require "lousy"
+
 -- Return selected uri or first uri in selection
 local return_selected = [=[
 (function(document) {

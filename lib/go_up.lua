@@ -4,6 +4,8 @@
 -- © 2012 LokiChaos <loki.chaos@gmail.com>                         --
 ---------------------------------------------------------------------
 
+local lousy = require "lousy"
+
 -- TODO check host against public TLD list to prevent returning only
 -- top-level domain.
 
