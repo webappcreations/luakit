@@ -4,6 +4,7 @@
 -- (C) 2012 Mason Larobina <mason.larobina@gmail.com> --
 --------------------------------------------------------
 
+local lousy = require "lousy"
 local windows = setmetatable({}, { __mode = "k" })
 
 local function switch_inspector(w, view)
