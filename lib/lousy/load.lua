@@ -51,4 +51,4 @@ function M.search_load(path, memorize)
         "unable to load resource: " .. path)
 end
 
-return setmetatable(M, { __call = function (_, ...) return search_load(...) end })
+return setmetatable(M, { __call = function (_, ...) return M.search_load(...) end })
