@@ -2,33 +2,55 @@
 -- Keybindings --
 -----------------
 
+local lousy = require "lousy"
+local modes = require "modes"
+
 -- Binding aliases
-local key, buf, but = lousy.bind.key, lousy.bind.buf, lousy.bind.but
-local cmd, any = lousy.bind.cmd, lousy.bind.any
+local b = lousy.bind
+local key, buf, but, cmd, any, hit = b.key, b.buf, b.but, b.cmd, b.any, b.hit
 
 -- Util aliases
 local match, join = string.match, lousy.util.table.join
-local strip, split = lousy.util.string.strip, lousy.util.string.split
 
 -- Globals or defaults that are used in binds
 local scroll_step = globals.scroll_step or 20
 local zoom_step = globals.zoom_step or 0.1
 
 -- Add binds to a mode
-function add_binds(mode, binds, before)
-    assert(binds and type(binds) == "table", "invalid binds table type: " .. type(binds))
-    mode = type(mode) ~= "table" and {mode} or mode
-    for _, m in ipairs(mode) do
-        local mdata = get_mode(m)
-        if mdata and before then
-            mdata.binds = join(binds, mdata.binds or {})
-        elseif mdata then
-            mdata.binds = mdata.binds or {}
-            for _, b in ipairs(binds) do table.insert(mdata.binds, b) end
+function add_binds(to_modes, binds, before)
+    assert(type(binds) == "table", "invalid binds table")
+    if type(to_modes) == "string" then to_modes = { to_modes }
+    elseif type(to_modes) ~= "table" then error("invalid modes") end
+
+    for _, name in ipairs(to_modes) do
+        local mode = modes.get(name)
+        -- Prepend binds to mode
+        if mode and before then
+            mode.binds = join(binds, mode.binds or {})
+        -- Append binds to mode
+        elseif mode then
+            mode.binds = join(mode.binds, binds)
+        -- Create new mode with given modes
         else
-            new_mode(m, { binds = binds })
+            modes.new(name, { binds = binds })
         end
     end
+end
+
+-- Generate `w.binds` on mode change.
+function window.init_funcs.update_binds(w)
+    w:add_signal("mode::enter", function (w, new_mode)
+        w.binds = join(new_mode.binds or {},
+             modes.get("all").binds or {})
+        w.buffer = nil
+        w:update_buf()
+    end)
+end
+
+local match_cmd = lousy.bind.match_cmd
+-- Wrapper around `lousy.bind.match_cmd` which uses "command" mode binds.
+function window.methods.match_cmd(w, ...)
+    return match_cmd(w, modes.get("command").binds or {}, ...)
 end
 
 -- Add commands to command mode
@@ -128,13 +150,13 @@ add_binds("normal", {
         function (w, m)
             local count, buf
             if m.buffer then
-                count = string.match(m.buffer, "^(%d+)")
+                count = match(m.buffer, "^(%d+)")
             end
             if count then
                 buf = string.sub(m.buffer, #count + 1, (m.updated_buf and -2) or -1)
                 local opts = join(m, {count = tonumber(count)})
                 opts.buffer = (#buf > 0 and buf) or nil
-                if lousy.bind.hit(w, m.binds, m.mods, m.key, opts) then
+                if hit(w, m.binds, m.mods, m.key, opts) then
                     return true
                 end
             end
@@ -479,7 +501,7 @@ add_cmds({
         `lousy.bind.match_cmd(..)` removing the bang from the command string
         and setting `bang = true` in the bind opts table.]],
         function (w, cmd, opts)
-            local cmd, args = string.match(cmd, "^(%S+)!+(.*)")
+            local cmd, args = match(cmd, "^(%S+)!+(.*)")
             if cmd then
                 opts = join(opts, { bang = true })
                 return lousy.bind.match_cmd(w, opts.binds, cmd .. args, opts)

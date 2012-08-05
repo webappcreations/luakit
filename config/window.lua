@@ -7,6 +7,9 @@ require "lfs"
 -- Window class table
 window = {}
 
+local lousy = require "lousy"
+local join = lousy.util.table.join
+
 -- List of active windows by window widget
 window.bywidget = setmetatable({}, { __mode = "k" })
 
@@ -270,11 +273,6 @@ window.methods = {
         return caught
     end,
 
-    -- Wrapper around the bind plugin's match_cmd method
-    match_cmd = function (w, buffer)
-        return lousy.bind.match_cmd(w, get_mode("command").binds, buffer)
-    end,
-
     -- enter command or characters into command line
     enter_cmd = function (w, cmd, opts)
         w:set_mode("command")
@@ -521,20 +519,14 @@ window.methods = {
 
     update_buf = function (w)
         local buf = w.sbar.r.buf
-        if w.buffer then
-            buf.text = lousy.util.escape(string.format(" %-3s", w.buffer))
+        local s = (w.mode.buffer_prefix or "") .. (w.buffer or "")
+
+        if s ~= "" then
+            buf.text = lousy.util.escape(string.format(" %-3s", s))
             buf:show()
         else
             buf:hide()
         end
-    end,
-
-    update_binds = function (w, mode)
-        -- Generate the list of active key & buffer binds for this mode
-        w.binds = lousy.util.table.join((get_mode(mode) or {}).binds or {}, get_mode('all').binds or {})
-        -- Clear & hide buffer
-        w.buffer = nil
-        w:update_buf()
     end,
 
     update_tablist = function (w)
@@ -648,7 +640,7 @@ window.methods = {
         -- Recursively remove widgets from window
         local children = lousy.util.recursive_remove(w.win)
         -- Destroy all widgets
-        for i, c in ipairs(lousy.util.table.join(children, {w.win})) do
+        for i, c in ipairs(join(children, { w.win })) do
             if c.hide then c:hide() end
             c:destroy()
         end
