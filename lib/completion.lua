@@ -15,8 +15,8 @@ local unpack = unpack
 local lousy = require "lousy"
 local history = require "history"
 local bookmarks = require "bookmarks"
+local modes = require "modes"
 local sql_escape, escape = lousy.util.sql_escape, lousy.util.escape
-local new_mode, get_mode = new_mode, get_mode
 local add_binds = add_binds
 local capi = { luakit = luakit }
 
@@ -105,7 +105,7 @@ function update_completions(w, text, pos)
     end
 end
 
-new_mode("completion", {
+modes.new("completion", {
     enter = function (w)
         -- Clear state
         local state = {}
@@ -165,7 +165,7 @@ funcs = {
         -- Check each command binding for matches
         local pat = "^" .. state.left
         local cmds = {}
-        for _, b in ipairs(get_mode("command").binds) do
+        for _, b in ipairs(modes.get("command").binds) do
             if b.cmds then
                 for i, cmd in ipairs(b.cmds) do
                     if string.match(cmd, pat) then
