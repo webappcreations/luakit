@@ -14,15 +14,16 @@ local rawset, rawget = rawset, rawget
 
 -- Get luakit environ
 local lousy = require "lousy"
-local new_mode, add_binds = new_mode, add_binds
+local modes = require "modes"
+local add_binds = add_binds
 local window = window
 local capi = {
     luakit = luakit
 }
 
-module("follow")
+local M = {}
 
-follow_js = [=[
+local follow_js = [=[
 window.luakit_follow = (function (window, document) {
     // Follow session state
     var state = {};
@@ -379,7 +380,7 @@ local function charset(seq, size)
 end
 
 -- Different hint label styles
-label_styles = {
+M.label_styles = {
     charset = function (seq)
         assert(type(seq) == "string" and #seq > 0, "invalid sequence")
         return function (size) return charset(seq, size) end
@@ -412,8 +413,8 @@ label_styles = {
 }
 
 -- Default follow style
-local s = label_styles
-label_maker = s.sort(s.reverse(s.numbers()))
+local s = M.label_styles
+M.label_maker = s.sort(s.reverse(s.numbers()))
 
 -- JavaScript regex escape function
 local function regex_escape(s)
@@ -422,7 +423,7 @@ local function regex_escape(s)
 end
 
 -- Different hint matching styles
-pattern_styles = {
+M.pattern_styles = {
     -- String match hint label & regex match text
     match_label_re_text = function (text)
         return #text > 0 and "^"..regex_escape(text) or "", text
@@ -439,7 +440,7 @@ pattern_styles = {
 }
 
 -- Default pattern style
-pattern_maker = pattern_styles.match_label_re_text
+M.pattern_maker = M.pattern_styles.match_label_re_text
 
 local function api(w, frame, action, ...)
     local mode = w.follow_state.mode
@@ -551,15 +552,15 @@ local function follow_all_hints(w)
     end
 end
 
-new_mode("follow", {
+modes.new("follow", {
     enter = function (w, mode)
         assert(type(mode) == "table", "invalid follow mode")
         -- Check users label_maker function (or valid default)
-        local label_maker = mode.label_maker or _M.label_maker
+        local label_maker = mode.label_maker or M.label_maker
         assert(type(label_maker) == "function",
             "invalid label_maker function")
         -- Check users pattern_maker function (or valid default)
-        assert(type(mode.pattern_maker or _M.pattern_maker) == "function",
+        assert(type(mode.pattern_maker or M.pattern_maker) == "function",
             "invalid pattern_maker function")
 
         assert(type(mode.evaluator) == "string", "missing mode evaluator")
@@ -673,7 +674,7 @@ add_binds("follow", {
     key({"Shift"},   "Return", function (w) follow_all_hints(w) end),
 })
 
-selectors = {
+M.selectors = {
     clickable = 'a, area, textarea, select, input:not([type=hidden]), button',
     focus = 'a, area, textarea, select, input:not([type=hidden]), button, body, applet, object',
     uri = 'a, area',
@@ -682,7 +683,7 @@ selectors = {
     thumbnail = "a img",
 }
 
-evaluators = {
+M.evaluators = {
     click = [=[function (element) {
         function click(element) {
             var mouse_event = document.createEvent("MouseEvent");
@@ -728,7 +729,7 @@ evaluators = {
     }]=]
 }
 
-local s, e = selectors, evaluators
+local s, e = M.selectors, M.evaluators
 local buf = lousy.bind.buf
 add_binds("normal", {
     buf("^f$", [[Start `follow` mode. Hint all clickable elements
@@ -768,10 +769,11 @@ add_binds("normal", {
 })
 
 -- Extended follow mode
-new_mode("ex-follow", {
+modes.new("ex-follow", {
     enter = function (w, persist)
         w.follow_persist = persist
     end,
+    buffer_prefix = ";",
 })
 
 add_binds("ex-follow", {
