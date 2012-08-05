@@ -31,7 +31,7 @@ end
 function M.get(name) return data[name] end
 
 function M.get_all()
-    return lousu.util.table.clone(data)
+    return lousy.util.table.clone(data)
 end
 
 function window.methods.set_mode(w, name, ...)

@@ -1,5 +1,7 @@
-require "lousy"
 require "package"
+
+local lousy = require "lousy"
+local modes = require "modes"
 
 local table_join = lousy.util.table.join
 local dedent = lousy.util.string.dedent
@@ -106,7 +108,7 @@ local function examine_mode(name, mode)
     local ret = {
         name = name,
         binds = binds,
-        source = string.match(mode.traceback, "\t([^:]+)"),
+        source = mode.source,
         desc = mode.desc and markdown(dedent(mode.desc)) or nil,
         order = mode.order,
     }
@@ -116,7 +118,7 @@ local function examine_mode(name, mode)
 end
 
 local function collate()
-    for name, mode in pairs(get_modes()) do
+    for name, mode in pairs(modes.get_all()) do
         by_mode[name] = examine_mode(name, mode)
     end
 end
