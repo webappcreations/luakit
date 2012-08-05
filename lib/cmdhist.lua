@@ -3,6 +3,8 @@
 -- © 2010 Mason Larobina <mason.larobina@gmail.com> --
 ------------------------------------------------------
 
+local lousy = require "lousy"
+
 -- Input bar history binds, these are only present in modes with a history
 -- table so we can make some assumptions. This auto-magic is present when
 -- a mode contains a `history` table item (with history settings therein).
@@ -37,7 +39,7 @@ local hist_binds = {
 }
 
 -- Add the Up & Down keybindings to modes which support command history
-window.init_funcs.add_hist_binds = function (w)
+function window.init_funcs.add_hist_binds(w)
     w:add_signal("mode-entered", function ()
         local mode = w.mode
         -- Setup history state

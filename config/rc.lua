@@ -21,7 +21,7 @@ if unique then
 end
 
 -- Load library of useful functions for luakit
-require "lousy"
+local lousy = require "lousy"
 
 -- Small util functions to print output (info prints only when luakit.verbose is true)
 function warn(...) io.stderr:write(string.format(...) .. "\n") end

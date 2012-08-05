@@ -11,6 +11,7 @@ local ipairs = ipairs
 local error = error
 local string = string
 local lousy = require "lousy"
+local modes = require "modes"
 local theme = theme
 local unpack = unpack
 local table = table
@@ -20,7 +21,7 @@ local widget = widget
 local window = window
 -- Check for mode/bind functions
 local add_binds, add_cmds = add_binds, add_cmds
-local new_mode, menu_binds = new_mode, menu_binds
+local menu_binds = menu_binds
 
 module("proxy")
 
@@ -165,7 +166,7 @@ webview.init_funcs.proxy_indicator_update = function (view, w)
     end)
 end
 
-new_mode("proxymenu", {
+modes.new("proxymenu", {
     enter = function (w)
         local afg, ifg = theme.proxy_active_menu_fg, theme.proxy_inactive_menu_fg
         local abg, ibg = theme.proxy_active_menu_bg, theme.proxy_inactive_menu_bg
