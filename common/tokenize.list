@@ -129,7 +129,6 @@ proxy_uri
 public_share_dir
 register_function
 reload
-reload_bypass_cache
 remove
 reorder
 resizable_text_areas

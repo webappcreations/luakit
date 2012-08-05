@@ -383,15 +383,10 @@ static gint
 luaH_webview_reload(lua_State *L)
 {
     webview_data_t *d = luaH_checkwvdata(L, 1);
-    webkit_web_view_reload(d->view);
-    return 0;
-}
-
-static gint
-luaH_webview_reload_bypass_cache(lua_State *L)
-{
-    webview_data_t *d = luaH_checkwvdata(L, 1);
-    webkit_web_view_reload_bypass_cache(d->view);
+    if (lua_toboolean(L, 2))
+        webkit_web_view_reload_bypass_cache(d->view);
+    else
+        webkit_web_view_reload(d->view);
     return 0;
 }
 
@@ -485,7 +480,6 @@ luaH_webview_index(lua_State *L, widget_t *w, luakit_token_t token)
       PF_CASE(LOAD_STRING,          luaH_webview_load_string)
       PF_CASE(LOADING,              luaH_webview_loading)
       PF_CASE(RELOAD,               luaH_webview_reload)
-      PF_CASE(RELOAD_BYPASS_CACHE,  luaH_webview_reload_bypass_cache)
       PF_CASE(SSL_TRUSTED,          luaH_webview_ssl_trusted)
       PF_CASE(STOP,                 luaH_webview_stop)
       /* push inspector webview methods */
