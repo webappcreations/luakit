@@ -260,8 +260,8 @@ window.init_funcs = {
 window.methods = {
     -- Wrapper around the bind plugin's hit method
     hit = function (w, mods, key, opts)
-        local opts = lousy.util.table.join(opts or {}, {
-            enable_buffer = w:is_mode("normal"),
+        local opts = join(opts or {}, {
+            enable_buffer = w.mode.enable_buffer,
             buffer = w.buffer,
         })
 
