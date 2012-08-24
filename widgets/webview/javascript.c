@@ -442,8 +442,11 @@ luaH_webview_eval_js(lua_State *L)
     /* evaluate javascript script and push return result onto lua stack */
     JSGlobalContextRef context = webkit_web_frame_get_global_context(frame);
 
-    gint ret = luaJS_eval_js(L, context, script,
-        usr_source ? usr_source : (const gchar*)source, no_return);
+    gint ret = 0;
+
+    if (context)
+        ret = luaJS_eval_js(L, context, script,
+                usr_source ? usr_source : (const gchar*)source, no_return);
 
     g_free(source);
 
