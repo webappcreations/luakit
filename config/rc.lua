@@ -145,6 +145,14 @@ require "go_input"
 require "go_next_prev"
 require "go_up"
 
+local html_tablist = require "html_tablist"
+
+function window.init_funcs.html_tablist(w)
+    w.html_tablist = html_tablist(w)
+    w.layout:pack(w.html_tablist, { expand = false, fill = false })
+    w.layout:reorder(w.html_tablist, 1)
+end
+
 -----------------------------
 -- End user script loading --
 -----------------------------
