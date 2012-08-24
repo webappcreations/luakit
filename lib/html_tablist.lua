@@ -128,6 +128,9 @@ M.html = [==[
 M.mainjs = [=[
 'use strict';
 
+/* increase animation performance */
+jQuery.fx.interval = 20;
+
 var tabinfo, $tablist = $("#tablist"),
     tab_html = $("#tab-skelly").html();
 
@@ -151,11 +154,8 @@ function update() {
     // Detect tab deletions
     for (var i = 0; i < order.length; i++) {
         var id = order[i];
-        if (!new_info[id]) {
-            var $t = $("#"+id);
-            $t.css({ position: "absolute", zIndex: 1000 });
-            $t.fadeOut("fast", function () { $t.remove() });
-        }
+        if (!new_info[id]) $("#"+id).remove();
+
     }
 
     for (var i = 0; i < len; i++) {
@@ -165,6 +165,8 @@ function update() {
             $tab = $(e);
         else {
             $tab = $(tab_html).attr("id", id);
+            $tab.css({ marginLeft: "-40em", opacity: 0 })
+            $tab.animate({ marginLeft: 0, opacity: 1 }, "fast");
             $tablist.append($tab);
         }
 
