@@ -8,8 +8,6 @@ body {
     margin: 0;
     padding: 0;
 
-    font-family: terminus;
-
     /* make nothing selectable */
     -webkit-user-select: none;
     cursor: default;
@@ -36,7 +34,7 @@ body {
     display: inline-block;
     position: relative;
 
-    z-index: 0; /* place at back */
+    z-index: 5; /* place at back */
 
     padding: 0.5em 1em 0.4em 1em;
     margin-right: 0.5em;
@@ -91,7 +89,7 @@ body {
     display: block;
     height: 0.5em;
     background-color: #000;
-    background: -webkit-linear-gradient(top, #fff 0%, #f0f0f0 60%, #aaa 100%);
+    background: -webkit-linear-gradient(top, #fff 0%, #f0f0f0 70%, #aaa 100%);
     z-index: 20;
 }
 
@@ -129,7 +127,7 @@ M.mainjs = [=[
 'use strict';
 
 /* increase animation performance */
-jQuery.fx.interval = 20;
+jQuery.fx.interval = 1;
 
 var tabinfo, $tablist = $("#tablist"),
     tab_html = $("#tab-skelly").html();
@@ -143,6 +141,15 @@ function deselect() {
     if (e) $(e).removeClass("selected");
 }
 
+function remove_tab(id) {
+    deleting[id] = true;
+    var $t = $("#"+id);
+    $t.animate({ width: 0, opacity: 0 }, "fast", function () {
+        $t.remove();
+        delete deleting[id];
+    });
+}
+
 function update() {
     var tabinfo = tabinfo_all();
 
@@ -154,8 +161,9 @@ function update() {
     // Detect tab deletions
     for (var i = 0; i < order.length; i++) {
         var id = order[i];
-        if (!new_info[id]) $("#"+id).remove();
-
+        if (!new_info[id] && !deleting[id]) {
+            remove_tab(id);
+        }
     }
 
     for (var i = 0; i < len; i++) {
@@ -165,26 +173,37 @@ function update() {
             $tab = $(e);
         else {
             $tab = $(tab_html).attr("id", id);
-            $tab.css({ marginLeft: "-40em", opacity: 0 })
+            $tab.css({ marginLeft: "-10em", opacity: 0 })
             $tab.animate({ marginLeft: 0, opacity: 1 }, "fast");
             $tablist.append($tab);
         }
 
-        $tab.find(".title").text(t.title || t.uri);
+        if (!t.title)
+            t.title = t.uri;
+
+        // Only update title if new tab or different
+        var old = info[id];
+        if (!old || (t.title !== old.title))
+            $tab.find(".title").text(t.title || t.uri);
+
         if (i + 1 === current)
             $tab.addClass("selected");
     }
-    //console.log($tablist.prop("outerHTML"));
 
     order = new_order;
     info = new_info;
 }
 
-$tablist.on("click", ".tab", function () {
-    deselect();
-    var $t = $(this);
-    $t.addClass("selected");
-    switch_tab(info[$(this).attr("id")].index);
+$tablist.on("mouseup", ".tab", function (ev) {
+    if (ev.which === 1) {
+        deselect();
+        var $t = $(this);
+        $t.addClass("selected");
+        switch_tab(info[$(this).attr("id")].index);
+    } else if (ev.which === 2) {
+        var $t = $(this);
+        close_tab(info[$(this).attr("id")].index);
+    }
 });
 
 ]=]
@@ -198,14 +217,12 @@ M.export_funcs = {
         local view = assert(w.tabs.children[index], "invalid index")
         return {
             uri = view.uri, title = view.title,
-            index = index, current = current == i,
-            loading = view:loading(),
+            index = index, loading = view:loading(),
         }
     end,
 
     tabinfo_all = function (w)
         local info, order = {}, {}
-
         for i, view in ipairs(w.tabs.children) do
             local id = view_hash(view)
             info[id] = {
@@ -219,7 +236,13 @@ M.export_funcs = {
     end,
 
     switch_tab = function (w, index)
+        assert(type(index) == "number", "invalid index")
         w.tabs:switch(index)
+    end,
+
+    close_tab = function (w, index)
+        assert(type(index) == "number", "invalid index")
+        w:close_tab(w.tabs[index])
     end,
 }
 
