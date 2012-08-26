@@ -77,6 +77,14 @@ body {
     box-shadow: 0 0 0.4em #000;
 }
 
+.tab .favicon {
+    margin: -0.3em 0 -0.5em -0.8em;
+    width: 16px;
+    height: 16px;
+    overflow: hidden;
+    display: none;
+}
+
 #shadow {
     position: fixed;
     pointer-events: none;
@@ -125,7 +133,11 @@ M.html = [==[
 
 <div id="templates">
     <div id="tab-skelly">
-        <div class="tab"><span class="title"></span></div>
+        <div class="tab">
+            <img class="favicon" onload="$(this).show();"
+                onerror="$(this).hide();" alt="" />
+            <span class="title"></span>
+        </div>
     </div>
 </div>
 ]==]
@@ -193,6 +205,14 @@ function update() {
         if (!old || (t.title !== old.title))
             $tab.find(".title").text(t.title || t.uri);
 
+        if (!old || (t.favicon !== old.favicon)) {
+            var $fav = $tab.find(".favicon");
+            if (t.favicon)
+                $fav.prop("src", t.favicon);
+            else
+                $fav.removeProp("src");
+        }
+
         if (i + 1 === current)
             $tab.addClass("selected");
     }
@@ -234,7 +254,7 @@ M.export_funcs = {
             local id = view_hash(view)
             info[id] = {
                 uri = view.uri, title = view.title, index = i,
-                loading = view:loading(),
+                favicon = view.icon_uri, loading = view:loading(),
             }
             order[i] = id
         end
@@ -297,6 +317,12 @@ function M.new(w)
     view:load_string(html, "ui://tablist")
 
     return view
+end
+
+webview.init_funcs.update_on_favicon = function (view, w)
+    view:add_signal("property::icon_uri", function (view)
+        w:update_tablist()
+    end)
 end
 
 return setmetatable(M, { __call = function (M, ...) return M.new(...) end })
