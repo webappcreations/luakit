@@ -197,13 +197,10 @@ function update() {
             $tablist.append($tab);
         }
 
-        if (!t.title)
-            t.title = t.uri;
-
         // Only update title if new tab or different
         var old = info[id];
         if (!old || (t.title !== old.title))
-            $tab.find(".title").text(t.title || t.uri);
+            $tab.find(".title").text(t.title);
 
         if (!old || (t.favicon !== old.favicon)) {
             var $fav = $tab.find(".favicon");
@@ -242,8 +239,9 @@ end
 M.export_funcs = {
     tabinfo_single = function (w, index)
         local view = assert(w.tabs.children[index], "invalid index")
+        local title = view.title
         return {
-            uri = view.uri, title = view.title,
+            title = (title ~= "" and title) or view.uri or "",
             index = index, loading = view:loading(),
         }
     end,
@@ -252,8 +250,10 @@ M.export_funcs = {
         local info, order = {}, {}
         for i, view in ipairs(w.tabs.children) do
             local id = view_hash(view)
+            local title = view.title
             info[id] = {
-                uri = view.uri, title = view.title, index = i,
+                title = (title ~= "" and title) or view.uri or "",
+                index = i,
                 favicon = view.icon_uri, loading = view:loading(),
             }
             order[i] = id
