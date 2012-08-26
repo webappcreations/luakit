@@ -29,17 +29,24 @@ body {
     white-space: nowrap;
 }
 
+#tablist {
+    position: relative;
+    display: -webkit-flexbox;
+    left: 0;
+    right: 0;
+}
+
 .tab {
     font-size: inherit;
-    display: inline-block;
+
     position: relative;
+    -webkit-box-flex: 1;
+    width: -webkit-flex(0 1 25em);
 
     z-index: 5; /* place at back */
 
     padding: 0.5em 1em 0.4em 1em;
     margin-right: 0.5em;
-
-    width: 20em;
 
     /* inactive colours */
     color: #444;
