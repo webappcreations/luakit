@@ -83,6 +83,7 @@ body {
     height: 16px;
     overflow: hidden;
     display: none;
+    -webkit-user-drag: none;
 }
 
 #shadow {
