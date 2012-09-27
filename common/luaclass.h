@@ -114,10 +114,11 @@ luaH_checkudataornil(lua_State *L, gint udx, lua_class_t *class) {
                 lua_gettop(L) - 1, LUA_MULTRET);                               \
     }
 
-#define LUA_CLASS_METHODS(class) \
-    { "add_signal", luaH_##class##_class_add_signal }, \
-    { "remove_signal", luaH_##class##_class_remove_signal }, \
-    { "emit_signal", luaH_##class##_class_emit_signal },
+#define LUA_CLASS_METHODS(class)                               \
+    { "on", luaH_##class##_class_add_signal                 }, \
+    { "add_signal", luaH_##class##_class_add_signal         }, \
+    { "remove_signal", luaH_##class##_class_remove_signal   }, \
+    { "emit_signal", luaH_##class##_class_emit_signal       },
 
 #define LUA_CLASS_META \
     { "__index", luaH_class_index }, \

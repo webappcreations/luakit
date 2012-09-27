@@ -170,6 +170,7 @@ switch
 tab_key_cycles_through_elements
 templates_dir
 text
+set_size
 time
 timeout
 title

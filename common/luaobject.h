@@ -177,11 +177,12 @@ gint luaH_object_property_signal(lua_State *, gint, luakit_token_t);
 gint luaH_object_tostring(lua_State *);
 gint luaH_object_gc(lua_State *);
 
-#define LUA_OBJECT_META(prefix)                            \
-    { "__tostring", luaH_object_tostring },                \
-    { "add_signal", luaH_object_add_signal_simple },       \
-    { "remove_signal", luaH_object_remove_signal_simple }, \
-    { "emit_signal", luaH_object_emit_signal_simple },
+#define LUA_OBJECT_META(prefix)                                \
+    { "__tostring",     luaH_object_tostring                }, \
+    { "on",             luaH_object_add_signal_simple       }, \
+    { "add_signal",     luaH_object_add_signal_simple       }, \
+    { "remove_signal",  luaH_object_remove_signal_simple    }, \
+    { "emit_signal",    luaH_object_emit_signal_simple      },
 
 #endif
 
