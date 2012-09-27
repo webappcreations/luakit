@@ -37,6 +37,9 @@
       return 1;                                       \
     case L_TK_DESTROY:                                \
       lua_pushcfunction(L, luaH_widget_destroy);      \
+      return 1;                                           \
+    case L_TK_SET_SIZE:                                   \
+      lua_pushcfunction(L, luaH_widget_set_size_request); \
       return 1;
 
 #define LUAKIT_WIDGET_NEWINDEX_COMMON(widget)         \
@@ -80,6 +83,7 @@ gint luaH_widget_set_child(lua_State*, widget_t*);
 gint luaH_widget_show(lua_State*);
 gint luaH_widget_get_visible(lua_State *L, widget_t*);
 gint luaH_widget_set_visible(lua_State *L, widget_t*);
+gint luaH_widget_set_size_request(lua_State*);
 
 
 void add_cb(GtkContainer*, GtkWidget*, widget_t*);

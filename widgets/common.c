@@ -167,6 +167,16 @@ luaH_widget_get_child(lua_State *L, widget_t *w)
 }
 
 gint
+luaH_widget_set_size_request(lua_State *L)
+{
+    widget_t *w = luaH_checkwidget(L, 1);
+    gint width = luaL_checkint(L, 2),
+         height = luaL_checkint(L, 3);
+    gtk_widget_set_size_request(w->widget, width, height);
+    return 0;
+}
+
+gint
 luaH_widget_remove(lua_State *L)
 {
     widget_t *w = luaH_checkwidget(L, 1);
