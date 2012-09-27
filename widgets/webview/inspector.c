@@ -44,8 +44,10 @@ static gboolean
 inspector_show_window_cb(WebKitWebInspector* UNUSED(inspector), widget_t *w)
 {
     lua_State *L = globalconf.L;
+    webview_data_t *d = w->data;
     luaH_object_push(L, w->ref);
-    luaH_object_emit_signal(L, -1, "show-inspector", 0, 0);
+    luaH_object_push(L, d->iview);
+    luaH_object_emit_signal(L, -2, "show-inspector", 1, 0);
     lua_pop(L, 1);
     return TRUE;
 }
@@ -54,8 +56,8 @@ static gboolean
 inspector_close_window_cb(WebKitWebInspector* UNUSED(inspector), widget_t *w)
 {
     lua_State *L = globalconf.L;
-    luaH_object_push(L, w->ref);
     webview_data_t *d = w->data;
+    luaH_object_push(L, w->ref);
     luaH_object_push(L, d->iview);
     d->iview = NULL;
     luaH_object_emit_signal(L, -2, "close-inspector", 1, 0);
@@ -67,8 +69,10 @@ static gboolean
 inspector_attach_window_cb(WebKitWebInspector* UNUSED(inspector), widget_t *w)
 {
     lua_State *L = globalconf.L;
+    webview_data_t *d = w->data;
     luaH_object_push(L, w->ref);
-    luaH_object_emit_signal(L, -1, "attach-inspector", 0, 0);
+    luaH_object_push(L, d->iview);
+    luaH_object_emit_signal(L, -2, "attach-inspector", 1, 0);
     lua_pop(L, 1);
     return TRUE;
 }
@@ -77,8 +81,10 @@ static gboolean
 inspector_detach_window_cb(WebKitWebInspector* UNUSED(inspector), widget_t *w)
 {
     lua_State *L = globalconf.L;
+    webview_data_t *d = w->data;
     luaH_object_push(L, w->ref);
-    luaH_object_emit_signal(L, -1, "detach-inspector", 0, 0);
+    luaH_object_push(L, d->iview);
+    luaH_object_emit_signal(L, -2, "detach-inspector", 1, 0);
     lua_pop(L, 1);
     return TRUE;
 }
