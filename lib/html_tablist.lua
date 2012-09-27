@@ -1,116 +1,78 @@
+local lousy = require "lousy"
+local window = require "window"
+local webview = require "webview"
+
 local M = {}
 
 M.stylesheet = [===[
+
 body {
-    background-color: white;
-    color: black;
-    font-size: 62.5%; /* 1em == 10px @ 96dpi */
-    margin: 0;
-    padding: 0;
-
-    /* make nothing selectable */
-    -webkit-user-select: none;
-    cursor: default;
-}
-
-#wrapper {
-    display: block;
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: 0;
-    height: 2.1em;
-
-    padding: 0.6em 1em 0.4em 1em;
-    background: -webkit-linear-gradient(top, #ccf 0%, #aaf 100%);
-
-    /* hide tab overflow */
-    overflow: hidden;
-    white-space: nowrap;
+    background-color: #333; color: #aaa;
+    font-family: terminus, monospace; font-size: 10px;
+    margin: 0; padding: 0;
+    cursor: default; -webkit-user-select: none;
 }
 
 #tablist {
-    position: relative;
-    display: -webkit-flexbox;
-    left: 0;
-    right: 0;
+    position: relative; display: -webkit-flexbox;
+    left: 0; right: 0;
 }
 
 .tab {
-    font-size: inherit;
-
     position: relative;
-    -webkit-box-flex: 1;
-    width: -webkit-flex(0 1 25em);
-
-    z-index: 5; /* place at back */
-
-    padding: 0.5em 1em 0.4em 1em;
-    margin-right: 0.5em;
-
-    /* inactive colours */
-    color: #444;
-    background-color: #f0f0f0;
-
-    border-radius: 0.5em 0.5em 0 0;
-    box-shadow: 0 0 0.3em #000;
-
-    /* hide text overflow */
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    -webkit-box-flex: 1; width: -webkit-flex(1 0 0);
+    margin: 0; padding: 2px 5px;
+    overflow: hidden; white-space: nowrap;
 }
 
-.tab:hover {
-    background-color: #fff;
+.tab > span {
+    position: relative; display: inline-block; z-index: 10;
 }
 
-.tab .title {
-    font-size: 1.1em;
+.tab > .num {
+    color: #fff;
 }
 
-.tab.selected {
-    z-index: 100;
-    border: none;
-    color: #222;
-    background-color: #fff;
-    box-shadow: 0 0 0.4em #000;
+.progress {
+    display: block; position: absolute; z-index: 0;
+    top: 0; bottom: 0; left: 0;
+    opacity: 0.1;
 }
 
-.tab .favicon {
-    margin: -0.3em 0 -0.5em -0.8em;
-    width: 16px;
-    height: 16px;
-    overflow: hidden;
-    display: none;
-    -webkit-user-drag: none;
+.progress > .bar {
+    display: block; position: absolute; z-index: 0;
+    top: 0; bottom: 0; left: 0; right: 32px;
+    background-image: -webkit-linear-gradient(right,
+        rgba(255,255,255,1) 0%,
+        rgba(255,255,255,0.5) 250%);
 }
 
-#shadow {
-    position: fixed;
-    pointer-events: none;
-    bottom: 0.4em;
-    left: -3em;
-    right: -3em;
-    top: -3em;
-    box-shadow: inset 0 0.5em 1.5em #000;
-    z-index: 10;
+.progress > .arrow {
+    display: block; position: absolute; z-index: 0;
+    top: 0; bottom: 0; right: 0; width: 32px;
+    background-image: -webkit-linear-gradient(45deg,
+        rgba(255,255,255,1) 16px,
+        rgba(255,255,255,0) 16px);
 }
 
-#horiz {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: block;
-    height: 0.5em;
-    background-color: #000;
-    background: -webkit-linear-gradient(top, #fff 0%, #f0f0f0 70%, #aaa 100%);
-    z-index: 20;
+.current {
+    background-color: #000; color: #fff;
 }
 
-#templates {
-    display: none;
+.current > .progress {
+    opacity: 1;
+}
+
+.current > .progress > .arrow {
+    background-image: -webkit-linear-gradient(45deg,
+        rgba(50,150,200,1) 16px,
+        rgba(50,150,200,0) 17px);
+}
+
+.current > .progress > .bar {
+    background-image: -webkit-linear-gradient(right,
+        rgba(50,150,200,1) 0%,
+        rgba(50,150,200,0) 250%);
 }
 
 ]===]
@@ -125,159 +87,186 @@ M.html = [==[
     </style>
 </head>
 <body>
-<div id="wrapper">
-    <div id="tablist"></div>
-    <div id="shadow"></div>
-</div>
-<div id="horiz"></div>
-</body>
-
-<div id="templates">
+<div id="tablist"></div>
+<div id="templates" style="display:none;">
     <div id="tab-skelly">
         <div class="tab">
-            <img class="favicon" onload="$(this).show();"
-                onerror="$(this).hide();" alt="" />
-            <span class="title"></span>
+            <!-- <img class="favicon" alt="" style="display:none;"
+            onload="$(this).show();" onerror="$(this).hide();" /> -->
+            <span class="num">0</span>
+            <span class="title">(untitled)</span>
+            <div class="progress">
+                <div class="bar"></div><div class="arrow"></div>
+            </div>
         </div>
     </div>
 </div>
+</body>
+</html>
 ]==]
 
 M.mainjs = [=[
 'use strict';
 
-/* increase animation performance */
-jQuery.fx.interval = 1;
+    /* increase animation performance */
+    jQuery.fx.interval = 1;
 
-var tabinfo, $tablist = $("#tablist"),
-    tab_html = $("#tab-skelly").html();
+    var tabinfo, $tablist = $("#tablist"),
+        tab_html = $("#tab-skelly").html();
 
-var order = [], info = {};
+    var tablist = document.getElementById("tablist");
 
-var deleting = {};
+    function remove_tab(id) {
+        $("#"+id).remove();
+        update_numbers();
+    }
 
-function deselect() {
-    var e = document.getElementsByClassName("selected")[0];
-    if (e) $(e).removeClass("selected");
-}
+    function favicon_onload(that) {
+        $(that).show().parent().addClass("has_favicon");
+    }
 
-function remove_tab(id) {
-    deleting[id] = true;
-    var $t = $("#"+id);
-    $t.animate({ width: 0, opacity: 0 }, "fast", function () {
-        $t.remove();
-        delete deleting[id];
+    function favicon_onerror(that) {
+        $(that).hide().parent().removeClass("has_favicon");
+    }
+
+    function update_title(id, title) {
+        $("#"+id).find(".title").text(title);
+    }
+
+    function update_favicon(id, src) {
+        $("#"+id).find(".favicon").prop("src", src);
+    }
+
+    function update_current(id) {
+        $tablist.find(".current").removeClass("current");
+        $("#"+id).addClass("current");
+    }
+
+    function update_progress(id, pct) {
+        var $l = $("#"+id+" > .progress").stop(true),
+            lpct = $l.prop("progress"),
+            width = (pct + 10) + "%";
+
+        if (pct < lpct) {
+            $l.attr("style", "");
+        } else if (pct === 100) {
+            $l.css("width", "").animate({ right: "-32px" },
+                function () { $l.fadeOut() });
+        } else {
+            $l.animate({ width: width });
+        }
+        $l.prop("progress", pct);
+    }
+
+    function update_numbers() {
+        var $tabs = $tablist.children(), length = $tabs.length, i = 0;
+        for (; i < length; i++)
+            $tabs.eq(i).find(".num").text(i+1);
+    }
+
+    function update(new_order) {
+        var i = 0, length = new_order.length, id;
+        for (; i < length; i++) {
+            id = new_order[i];
+            if (!document.getElementById(id)) {
+                $tablist.append($(tab_html).prop("id", id));
+            }
+        }
+        update_numbers();
+    }
+
+    $tablist.on("mousedown", ".tab", function (e) {
+        e.preventDefault();
+        if (e.which === 1) {
+            switch_tab($(this).attr("id"));
+        } else if (e.which === 2) {
+            close_tab($(this).attr("id"));
+        }
     });
-}
 
-function update() {
-    var tabinfo = tabinfo_all();
-
-    var new_order = tabinfo.order, new_info = tabinfo.info,
-        len = new_order.length, current = tabinfo.current;
-
-    deselect();
-
-    // Detect tab deletions
-    for (var i = 0; i < order.length; i++) {
-        var id = order[i];
-        if (!new_info[id] && !deleting[id]) {
-            remove_tab(id);
-        }
-    }
-
-    for (var i = 0; i < len; i++) {
-        var id = new_order[i], t = new_info[id], e = document.getElementById(id), $tab;
-
-        if (e)
-            $tab = $(e);
-        else {
-            $tab = $(tab_html).attr("id", id);
-            $tab.css({ marginLeft: "-10em", opacity: 0 })
-            $tab.animate({ marginLeft: 0, opacity: 1 }, "fast");
-            $tablist.append($tab);
-        }
-
-        // Only update title if new tab or different
-        var old = info[id];
-        if (!old || (t.title !== old.title))
-            $tab.find(".title").text(t.title);
-
-        if (!old || (t.favicon !== old.favicon)) {
-            var $fav = $tab.find(".favicon");
-            if (t.favicon)
-                $fav.prop("src", t.favicon);
-            else
-                $fav.removeProp("src");
-        }
-
-        if (i + 1 === current)
-            $tab.addClass("selected");
-    }
-
-    order = new_order;
-    info = new_info;
-}
-
-$tablist.on("mouseup", ".tab", function (ev) {
-    if (ev.which === 1) {
-        deselect();
-        var $t = $(this);
-        $t.addClass("selected");
-        switch_tab(info[$(this).attr("id")].index);
-    } else if (ev.which === 2) {
-        var $t = $(this);
-        close_tab(info[$(this).attr("id")].index);
-    }
-});
-
+    //$(document.body).on("contextmenu", function (e) {
+    //    e.preventDefault();
+    //})
 ]=]
 
-local function view_hash(view)
-    return "tab-" .. string.match(tostring(view), "(%w+)$")
+local map_view_id = setmetatable({}, { __mode = "k" })
+local map_id_view = setmetatable({}, { __mode = "v" })
+
+function viewid(view)
+    local id = map_view_id[view]
+    if not id then
+        id = "view-" .. string.match(tostring(view), "%w+$")
+        map_view_id[view] = id
+        map_id_view[id] = view
+    end
+    return id
 end
 
 M.export_funcs = {
-    tabinfo_single = function (w, index)
-        local view = assert(w.tabs.children[index], "invalid index")
-        local title = view.title
-        return {
-            title = (title ~= "" and title) or view.uri or "",
-            index = index, loading = view:loading(),
-        }
+    switch_tab = function (w, id)
+        local view = assert(map_id_view[id])
+        local tabs = w.tabs
+        tabs:switch(tabs:indexof(view))
     end,
 
-    tabinfo_all = function (w)
-        local info, order = {}, {}
-        for i, view in ipairs(w.tabs.children) do
-            local id = view_hash(view)
-            local title = view.title
-            info[id] = {
-                title = (title ~= "" and title) or view.uri or "",
-                index = i,
-                favicon = view.icon_uri, loading = view:loading(),
-            }
-            order[i] = id
-        end
-
-        return { order = order, info = info, current = w.tabs:current() }
-    end,
-
-    switch_tab = function (w, index)
-        assert(type(index) == "number", "invalid index")
-        w.tabs:switch(index)
-    end,
-
-    close_tab = function (w, index)
-        assert(type(index) == "number", "invalid index")
-        w:close_tab(w.tabs[index])
+    close_tab = function (w, id)
+        local view = assert(map_id_view[id])
+        w:close_tab(view)
     end,
 }
+
+function window.methods.update_tab_title(w, view)
+    local title = view.title or view.uri or "(untitled)"
+    local update = string.format("update_title(%q, %q);", viewid(view), title)
+    w.tablist_eval_func(update)
+end
+
+function window.methods.update_tab_favicon(w, view)
+    local update = string.format("update_favicon(%q, %q);", viewid(view),
+        view.icon_uri)
+    w.tablist_eval_func(update)
+end
+
+function window.methods.update_tab_progress(w, view)
+    local update = string.format("update_progress(%q, %d);", viewid(view),
+        view.progress * 100)
+    w.tablist_eval_func(update)
+end
+
+function webview.init.html_tablist_update(view, w)
+    view:on("property::title", function (view)
+        w:update_tab_title(view)
+    end)
+    view:on("property::icon_uri", function (view)
+        w:update_tab_favicon(view)
+    end)
+    view:on("property::progress", function (view)
+        w:update_tab_progress(view)
+    end)
+end
+
+function window.init.html_tablist_update(w)
+    w.tabs:on("page-added", function ()
+        local ids = {}
+        for i, view in ipairs(w.tabs.children) do
+            ids[i] = viewid(view)
+        end
+        w.tablist_eval_func("update(['" .. table.concat(ids, "','") .. "']);")
+    end)
+    w.tabs:on("page-removed", function (_, view)
+        w.tablist_eval_func(
+            string.format("remove_tab(%q);", viewid(view)))
+    end)
+
+    w.tabs:on("switch-page", function (_, view)
+        w.tablist_eval_func(
+            string.format("update_current(%q);", viewid(view)))
+    end)
+end
 
 function M.new(w)
     assert(w, "missing window argument")
 
-    -- Init webview widget
     local view = widget{type="webview"}
     view.show_scrollbars = false
 
@@ -285,45 +274,77 @@ function M.new(w)
         stylesheet = M.stylesheet
     })
 
-    function on_first_visual(view, status)
+    view:on("expose", function (view)
+        local h = view:eval_js("document.body.getClientRects()[0].height")
+        view:set_size(-1, h)
+    end)
+
+    -- Prevent navigating away
+    view:on("navigation-request", function () return false end)
+
+    local queue = {}
+    w.tablist_eval_func = function (code)
+        table.insert(queue, code)
+    end
+
+    function on_loaded(view, status)
         if status ~= "finished" then return end
 
         -- Hack to run-once
-        view:remove_signal("load-status", on_first_visual)
+        view:remove_signal("load-status", on_loaded)
 
         for name, func in pairs(M.export_funcs) do
             view:register_function(name, function (...) return func(w, ...) end)
         end
 
         -- Load jQuery JavaScript library
-        local jquery = lousy.load("lib/jquery.min.js")
-        local _, err = view:eval_js(jquery, { no_return = true })
+        local jquery = assert(lousy.load {
+            luakit.dev_paths and "./lib/jquery.min.js",
+            xdg.config_dir .. "/jquery.min.js",
+            luakit.install_path .. "/lib/jquery.min.js"
+        }, "unable to find jquery.min.js")
+
+        local noret = { no_return = true }
+
+        local _, err = view:eval_js(jquery, noret)
         assert(not err, err)
 
-        local _, err = view:eval_js(M.mainjs, { no_return = true })
+        local _, err = view:eval_js(M.mainjs, noret)
         assert(not err, err)
 
-        view:eval_js("update()", { no_return = true })
+        local queued = table.concat(queue, "\n")
+        queue = nil
+
+        local view = view
+        w.tablist_eval_func = function (code)
+            local _, err = view:eval_js(code, noret)
+            assert(not err, err)
+        end
+
+        if queued ~= "" then
+            local _, err = view:eval_js(queued, { no_return = true })
+            assert(not err, err)
+        end
     end
 
-    view:add_signal("load-status", on_first_visual)
+    view:on("load-status", on_loaded)
 
-    -- Replace tablist update
-    w.update_tablist = function (w)
-        local _, err = view:eval_js([=[
-            if (typeof update !== "undefined") update();
-        ]=], { no_return = true })
-        assert(not err, err)
-    end
     view:load_string(html, "ui://tablist")
-
     return view
 end
 
-webview.init_funcs.update_on_favicon = function (view, w)
-    view:add_signal("property::icon_uri", function (view)
-        w:update_tablist()
+window.on("new", function (w)
+    w.tabs.show_tabs = false
+    w.tablist = M.new(w)
+
+    webview.init.enable_web_inspector(w.tablist, w)
+
+    w.layout:pack(w.tablist, { expand = false, fill = false })
+    w.layout:reorder(w.tablist, 0)
+
+    w:on("destroy", function ()
+        w.tablist:destroy()
     end)
-end
+end)
 
 return setmetatable(M, { __call = function (M, ...) return M.new(...) end })
