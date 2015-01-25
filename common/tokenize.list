@@ -99,9 +99,9 @@ javascript_can_access_clipboard
 javascript_can_open_windows_automatically
 label
 left
+load_string
 loading
 loading_chrome
-load_string
 max_conns
 max_conns_per_host
 maximized
@@ -141,10 +141,13 @@ scroll
 search
 secondary
 secure
+select_region
 selectable
 selection
-select_region
+send_key
 serif_font_family
+set_alignment
+set_child
 set_default_size
 set_title
 show

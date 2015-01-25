@@ -58,6 +58,9 @@ require "binds"
 
 require "webinspector"
 
+-- Add ability to send keystrokes to the window
+require "keysym"
+
 -- Add sqlite3 cookiejar
 require "cookies"
 
