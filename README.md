@@ -92,12 +92,12 @@ files.
 Do:
 
     mkdir -p $XDG_CONFIG_HOME
-    cp -v /etc/xdg/luakit $XDG_CONFIG_HOME
+    cp -rv /etc/xdg/luakit $XDG_CONFIG_HOME
 
 Or:
 
     mkdir -p ~/.config
-    cp -v /etc/xdg/luakit ~/.config
+    cp -rv /etc/xdg/luakit ~/.config
 
 The several files of interest are explained below.
 
